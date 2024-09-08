@@ -1,0 +1,29 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon --inspect src/index.js",
+    "watch": "node-sass --watch src/resources/scss/app.scss --output src/public/css/app.css",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cookie-parser": "^1.4.5",
+    "cors": "^2.8.5",
+    "dotenv": "^8.2.0",
+    "express": "^4.19.2",
+    "express-fileupload": "^1.4.0",
+    "jsonwebtoken": "^9.0.0",
+    "moment": "^2.29.4",
+    "mongoose": "^7.0.2",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "3.11.0",
+    "nodemon": "^3.1.4",
+    "uuid": "^10.0.0"
+  }
+}
