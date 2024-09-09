@@ -4,7 +4,8 @@ const {
     findByIdUserService,
     setFollowingService,
     setFollowerService,
-    loginService
+    loginService,
+    updateByIdUserService
 } = require("../services/usersService");
 const { v4: uuidv4 } = require('uuid');
 const jwt = require("jsonwebtoken");
@@ -92,12 +93,15 @@ const createUser = async (req, res, next) => {
     ]
 
     try {
-        const data = await createUserService(dataInsert)
+        const data = await createUserService(dataInsert);
+        let item = await findByIdUserService(user_id);
+
         res.json({
             code: 200,
             message: 'Employee created successfully',
-            data: { ...dataInsert }
+            data: item
         });
+
     } catch (error) {
         res.status(500).json({
             code: 500,

@@ -62,14 +62,14 @@ const getUsersService = async (searchObject = {}) => {
     }
 };
 
-const updateByIdUserService = async (id, body) => {
-    const { name, email, city } = body;
+const updateByIdUserService = async (id, body = {}) => {
+    const { username, email, phoneNumber } = body;
     const query = `
         UPDATE user
-        SET name = ?, email = ?, city = ?
+        SET username = ?, email = ?, phoneNumber = ?
         WHERE user_id = ?`;
 
-    const [result] = await db.query(query, [name, email, city, id]);
+    const [result] = await db.query(query, [username || "", email || "", phoneNumber || "", id]);
     return result;
 };
 
