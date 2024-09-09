@@ -10,8 +10,8 @@ const loginService = async (data) => {
 const createUserService = async (body) => {
     const [result] = await db.query(`
         INSERT INTO 
-        user (user_id, username, password, fullName, phoneNumber, email) 
-        VALUES (?, ?, ?, ?, ?, ?)`,
+        user (user_id, username, password, fullName, phoneNumber, email, num_following, num_followers, num_like, avatar, role, followings, followers ) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         body
     );
     return result;

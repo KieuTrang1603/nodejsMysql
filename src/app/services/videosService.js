@@ -1,35 +1,35 @@
 const db = require("../../config/db");
 
-const createUserService = async (body) => {
+const createVideoService = async (body) => {
     const [result] = await db.query(`
-        INSERT INTO Users (id, name, email, city) VALUES (?, ?, ?, ?)`,
+        INSERT INTO video (id, name, email, city) VALUES (?, ?, ?, ?)`,
         body
     );
     return result;
 };
 
 
-const findByIdUserService = async (id) => {
-    const query = `SELECT * FROM Users WHERE id = ?`;
+const findByIdVideoService = async (id) => {
+    const query = `SELECT * FROM video WHERE id = ?`;
     const [results] = await db.query(query, [id]);
     return results[0] || null;
 };
 
-const getUsersService = async (searchObject = {}) => {
+const getVideoService = async (searchObject = {}) => {
     let { searchTerm = '', pageIndex = 2, pageSize = 1} = searchObject;
     const offset = (pageIndex - 1) * pageSize;
 
     let dataSearch = [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
 
     const query = `
-        SELECT * FROM Users
+        SELECT * FROM video
         WHERE name LIKE ? OR email LIKE ? OR city LIKE ?
         LIMIT ? OFFSET ?`;
 
     // Truy vấn để đếm tổng số bản ghi
     const countQuery = `
         SELECT COUNT(*) AS total
-        FROM Users
+        FROM video
         WHERE name LIKE ? OR email LIKE ? OR city LIKE ?`;
 
     try {
@@ -54,10 +54,10 @@ const getUsersService = async (searchObject = {}) => {
     }
 };
 
-const updateByIdUserService = async (id, body) => {
+const updateByIdVideoService = async (id, body) => {
     const { name, email, city } = body;
     const query = `
-        UPDATE Users
+        UPDATE video
         SET name = ?, email = ?, city = ?
         WHERE id = ?`;
 
@@ -65,29 +65,29 @@ const updateByIdUserService = async (id, body) => {
     return result;
 };
 
-const deleteUserService = async (id) => {
-    const query = `DELETE FROM Users WHERE id = ?`;
+const deleteVideoService = async (id) => {
+    const query = `DELETE FROM video WHERE id = ?`;
     const [result] = await db.query(query, [id]);
     return result;
 };
 
-const deleteListUserService = async (ids) => {
+const deleteListVideoService = async (ids) => {
     if (!Array.isArray(ids) || ids.length === 0) {
         throw new Error('Danh sách ID không hợp lệ');
     }
 
     // Tạo chuỗi tham số cho câu truy vấn SQL
     const placeholders = ids.map(() => '?').join(',');
-    const query = `DELETE FROM Users WHERE id IN (${placeholders})`;
+    const query = `DELETE FROM video WHERE id IN (${placeholders})`;
 
     const [result] = await db.query(query, ids);
     return result;
 };
 
 module.exports = {
-    getUsersService,
-    findByIdUserService,
-    updateByIdUserService,
-    createUserService,
-    deleteUserService
+    getVideoService,
+    findByIdVideoService,
+    updateByIdVideoService,
+    createVideoService,
+    deleteVideoService
 }

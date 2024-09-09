@@ -1,11 +1,11 @@
-const { getUsersService, createUserService } = require("../services/usersService");
+const { getVideoService, createVideoService } = require("../services/videosService");
 const { v4: uuidv4 } = require('uuid');
 
 // const profile = firebase.collection('profile');
 
-const getUser = async (req, res, next) => {
+const getVideo = async (req, res, next) => {
     try {
-        let data = await getUsersService();
+        let data = await getVideoService();
         return res.json({
             code: 200,
             message: "Thành công",
@@ -20,14 +20,14 @@ const getUser = async (req, res, next) => {
         });
     }
 }
-const createUser = async (req, res, next) => {
+const createVideo = async (req, res, next) => {
     const id = uuidv4();
     const { name, email, city } = req.body;
     console.log(req.body)
     console.log([id, name, email, city])
 
     try {
-        const data = await createUserService([id, name, email, city])
+        const data = await createVideoService([id, name, email, city])
         res.json({
             code: 200,
             message: 'Employee created successfully',
@@ -42,19 +42,19 @@ const createUser = async (req, res, next) => {
         });
     }
 }
-const getByIdUser = (req, res, next) => {
+const getByIdVideo = (req, res, next) => {
 
 }
-const updateUser = (req, res, next) => {
+const updateVideo = (req, res, next) => {
 
 }
-const deleteUser = async (req, res, next) => {
+const deleteVideo = async (req, res, next) => {
 
 }
 module.exports = {
-    getUser,
-    createUser,
-    getByIdUser: getByIdUser,
-    updateUser: updateUser,
-    deleteUser: deleteUser,
+    getVideo,
+    createVideo,
+    getByIdVideo: getByIdVideo,
+    updateVideo: updateVideo,
+    deleteVideo: deleteVideo,
 }

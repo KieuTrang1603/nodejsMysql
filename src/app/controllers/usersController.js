@@ -59,8 +59,37 @@ const getUser = async (req, res, next) => {
 
 const createUser = async (req, res, next) => {
     const user_id = uuidv4();
-    const { username, password, fullName, phoneNumber, email, } = req.body;
-    let dataInsert = [user_id, username, password, fullName, phoneNumber, email]
+
+    const {
+        username,
+        password,
+        fullName,
+        phoneNumber,
+        email,
+        num_following,
+        num_followers,
+        num_like,
+        avatar,
+        role,
+        followings,
+        followers
+    } = req.body;
+
+    let dataInsert = [
+        user_id,
+        username,
+        password,
+        fullName,
+        phoneNumber,
+        email,
+        num_following || 0,
+        num_followers || 0,
+        num_like || 0,
+        avatar || null,
+        role || null,
+        followings || null,
+        followers || null,
+    ]
 
     try {
         const data = await createUserService(dataInsert)
@@ -70,7 +99,6 @@ const createUser = async (req, res, next) => {
             data: { ...dataInsert }
         });
     } catch (error) {
-        console.error(error);
         res.status(500).json({
             code: 500,
             message: 'Error creating employee',
