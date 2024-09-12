@@ -2,24 +2,28 @@ const db = require("../../config/db");
 
 const createVideoService = async (body) => {
     const [result] = await db.query(`
-        INSERT INTO video (id, name, email, city) VALUES (?, ?, ?, ?)`,
+        INSERT INTO 
+        user (video_id, user_id, title, description, content, num_like, num_comments, link_video, num_views, date_uploaded, likes, comments) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         body
     );
     return result;
 };
 
-
 const findByIdVideoService = async (id) => {
-    const query = `SELECT * FROM video WHERE id = ?`;
+    const query = `SELECT * FROM video WHERE video_id = ?`;
     const [results] = await db.query(query, [id]);
     return results[0] || null;
 };
 
 const getVideoService = async (searchObject = {}) => {
-    let { searchTerm = '', pageIndex = 2, pageSize = 1} = searchObject;
+    let { keyword = '',
+        pageIndex = 10,
+        pageSize = 1
+    } = searchObject;
     const offset = (pageIndex - 1) * pageSize;
 
-    let dataSearch = [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
+    let dataSearch = [`%${keyword}%`, `%${keyword}%`, `%${keyword}%`]
 
     const query = `
         SELECT * FROM video

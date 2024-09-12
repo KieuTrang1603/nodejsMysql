@@ -1,21 +1,23 @@
 const db = require("../../config/db");
 
-const createNotificationsService = async (body) => {
+const createNotificationService = async (body) => {
     const [result] = await db.query(`
-        INSERT INTO notifications (id, name, email, city) VALUES (?, ?, ?, ?)`,
+        INSERT INTO 
+        user (notification_id, user_id, video_id, comment_id, type_notification, content, seen, redirect_to, is_read) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         body
     );
     return result;
 };
 
 
-const findByIdNotificationsService = async (id) => {
-    const query = `SELECT * FROM notifications WHERE id = ?`;
+const findByIdNotificationService = async (id) => {
+    const query = `SELECT * FROM notifications WHERE notification_id = ?`;
     const [results] = await db.query(query, [id]);
     return results[0] || null;
 };
 
-const getNotificationssService = async (searchObject = {}) => {
+const getNotificationsService = async (searchObject = {}) => {
     let { searchTerm = '', pageIndex = 2, pageSize = 1 } = searchObject;
     const offset = (pageIndex - 1) * pageSize;
 
@@ -49,46 +51,55 @@ const getNotificationssService = async (searchObject = {}) => {
             pageIndex: pageIndex
         };
     } catch (error) {
-        console.error(error);
-        throw error;  // Để hàm gọi ở nơi khác có thể bắt lỗi
+        throw error; 
     }
 };
 
-const updateByIdNotificationsService = async (id, body) => {
-    const { name, email, city } = body;
+
+//Cập nhật trạng thái của phiếu là đã xem
+const updateNotificationSeenService = async (id) => {
     const query = `
         UPDATE notifications
-        SET name = ?, email = ?, city = ?
-        WHERE id = ?`;
-
-    const [result] = await db.query(query, [name, email, city, id]);
-    return result;
+        SET seen = true
+        WHERE notification_id = ?
+    `;
+    try {
+        const [result] = await db.query(query, [id]);
+        return result;
+    } catch (error) {
+        throw error;
+    }
 };
 
-const deleteNotificationsService = async (id) => {
-    const query = `DELETE FROM notifications WHERE id = ?`;
-    const [result] = await db.query(query, [id]);
-    return result;
+
+const deleteNotificationService = async (id) => {
+    try {
+        const query = `DELETE FROM notifications WHERE notification_id = ?`;
+        const [result] = await db.query(query, [id]);
+        return result;
+    } catch (error) {
+        throw error;
+    }
 };
 
-const deleteListNotificationsService = async (ids) => {
+const deleteListNotificationService = async (ids) => {
     if (!Array.isArray(ids) || ids.length === 0) {
         throw new Error('Danh sách ID không hợp lệ');
     }
 
     // Tạo chuỗi tham số cho câu truy vấn SQL
     const placeholders = ids.map(() => '?').join(',');
-    const query = `DELETE FROM notifications WHERE id IN (${placeholders})`;
+    const query = `DELETE FROM notifications WHERE notification_id IN (${placeholders})`;
 
     const [result] = await db.query(query, ids);
     return result;
 };
 
 module.exports = {
-    createNotificationsService,
-    findByIdNotificationsService,
-    getNotificationssService,
-    updateByIdNotificationsService,
-    deleteNotificationsService,
-    deleteListNotificationsService,
+    createNotificationService,
+    findByIdNotificationService,
+    getNotificationsService,
+    deleteNotificationService,
+    deleteListNotificationService,
+    updateNotificationSeenService
 }

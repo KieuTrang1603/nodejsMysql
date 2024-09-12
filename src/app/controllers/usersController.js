@@ -43,7 +43,7 @@ const login = async (req, res, next) => {
 
 const getUser = async (req, res, next) => {
     try {
-        let data = await getUsersService();
+        let data = await getUsersService(req.query);
         return res.json({
             code: 200,
             message: "Thành công",
@@ -93,7 +93,7 @@ const createUser = async (req, res, next) => {
     ]
 
     try {
-        const data = await createUserService(dataInsert);
+        await createUserService(dataInsert);
         let item = await findByIdUserService(user_id);
 
         res.json({
@@ -110,14 +110,54 @@ const createUser = async (req, res, next) => {
         });
     }
 }
-const getByIdUser = (req, res, next) => {
 
+const getByIdUser = async (req, res, next) => {
+    const { user_id } = req.params;
+
+    try {
+        let item = await findByIdUserService(user_id);
+        res.json({
+            code: 200,
+            message: 'Notification successfully',
+            data: item
+        });
+    } catch (error) {
+        res.status(500).json({
+            code: 500,
+            message: 'Error creating employee',
+            error: error.message
+        });
+    }
 }
+
 const updateUser = (req, res, next) => {
 
 }
 const deleteUser = async (req, res, next) => {
+    const { user_id } = req.params;
 
+    try {
+        const result = await deleteUser(user_id);
+
+        // Kiểm tra nếu không có bản ghi nào bị xóa
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                code: 404,
+                message: 'User not found',
+            });
+        }
+
+        res.json({
+            code: 200,
+            message: 'User deleted successfully'
+        });
+    } catch (error) {
+        res.status(500).json({
+            code: 500,
+            message: 'Error deleting notification',
+            error: error.message
+        });
+    }
 }
 
 //follow
@@ -182,7 +222,7 @@ module.exports = {
     createUser,
     follow,
     login,
-    getByIdUser: getByIdUser,
-    updateUser: updateUser,
-    deleteUser: deleteUser,
+    getByIdUser,
+    updateUser,
+    deleteUser,
 }

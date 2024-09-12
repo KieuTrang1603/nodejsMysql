@@ -24,10 +24,10 @@ const findByIdUserService = async (id) => {
 };
 
 const getUsersService = async (searchObject = {}) => {
-    let { searchTerm = '', pageIndex = 1, pageSize = 10 } = searchObject;
+    let { keyword = '', pageIndex = 1, pageSize = 10 } = searchObject;
     const offset = (pageIndex - 1) * pageSize;
 
-    let dataSearch = [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
+    let dataSearch = [`%${keyword}%`, `%${keyword}%`, `%${keyword}%`]
 
     const query = `
         SELECT * FROM user

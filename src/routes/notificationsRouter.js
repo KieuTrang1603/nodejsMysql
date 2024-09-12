@@ -1,15 +1,13 @@
 const express = require("express");
 const router = express.Router();
 
-const userController = require("../app/controllers/usersController")
+const notificationsController = require("../app/controllers/notificationsController")
 
 
-router.put('/follow', userController.follow)
-router.post('/login', userController.login)
-router.post('/', userController.createUser)
-router.get('/:id', userController.getByIdUser)
-router.put('/:id', userController.updateUser)
-router.delete('/:id', userController.deleteUser)
-router.get('/', userController.getUser)
+router.post('/', notificationsController.createNotification)
+router.put('/:notification_id/seen', notificationsController.updateNotificationSeen)
+router.delete('/:notification_id', notificationsController.deleteNotification)
+router.get('/:notification_id', notificationsController.getByIdNotification)
+router.get('/', notificationsController.getNotification)
 
 module.exports = router
