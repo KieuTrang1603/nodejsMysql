@@ -43,6 +43,7 @@ const storageImage = multer.diskStorage({
         cb(null, urlImage)
     }
 })
+
 const uploadFileVideo = multer({ storage: storageVideo });
 const uploadFileImage = multer({
     storage: storageImage,

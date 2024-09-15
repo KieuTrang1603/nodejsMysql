@@ -18,21 +18,17 @@ const findByIdNotificationService = async (id) => {
 };
 
 const getNotificationsService = async (searchObject = {}) => {
-    let { searchTerm = '', pageIndex = 2, pageSize = 1 } = searchObject;
+    let { keyword = '', pageIndex = 10, pageSize = 1 } = searchObject;
     const offset = (pageIndex - 1) * pageSize;
-
-    let dataSearch = [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
 
     const query = `
         SELECT * FROM notifications
-        WHERE name LIKE ? OR email LIKE ? OR city LIKE ?
         LIMIT ? OFFSET ?`;
 
     // Truy vấn để đếm tổng số bản ghi
     const countQuery = `
         SELECT COUNT(*) AS total
-        FROM notifications
-        WHERE name LIKE ? OR email LIKE ? OR city LIKE ?`;
+        FROM notifications`;
 
     try {
         // Thực hiện cả hai truy vấn đồng thời

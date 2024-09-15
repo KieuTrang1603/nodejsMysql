@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 //Lấy danh sách
 const getNotification = async (req, res, next) => {
     try {
-        let data = await getNotificationsService();
+        let data = await getNotificationsService(req.query);
         return res.json({
             code: 200,
             message: "Thành công",

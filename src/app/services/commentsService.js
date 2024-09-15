@@ -10,7 +10,6 @@ const createCommentService = async (body) => {
     return result;
 };
 
-
 const findByIdCommentService = async (id) => {
     const query = `SELECT * FROM comments WHERE comment_id = ?`;
     const [results] = await db.query(query, [id]);
@@ -18,21 +17,18 @@ const findByIdCommentService = async (id) => {
 };
 
 const getCommentsService = async (searchObject = {}) => {
-    let { searchTerm = '', pageIndex = 2, pageSize = 1} = searchObject;
+    let { keyword = '', pageIndex = 10, pageSize = 1 } = searchObject;
     const offset = (pageIndex - 1) * pageSize;
 
-    let dataSearch = [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
 
     const query = `
         SELECT * FROM comments
-        WHERE name LIKE ? OR email LIKE ? OR city LIKE ?
         LIMIT ? OFFSET ?`;
 
     // Truy vấn để đếm tổng số bản ghi
     const countQuery = `
         SELECT COUNT(*) AS total
-        FROM comments
-        WHERE name LIKE ? OR email LIKE ? OR city LIKE ?`;
+        FROM comments`;
 
     try {
         // Thực hiện cả hai truy vấn đồng thời
@@ -51,26 +47,37 @@ const getCommentsService = async (searchObject = {}) => {
             pageIndex: pageIndex
         };
     } catch (error) {
-        console.error(error);
         throw error;  // Để hàm gọi ở nơi khác có thể bắt lỗi
     }
 };
 
-const updateByIdCommentService = async (id, body) => {
-    const { name, email, city } = body;
-    const query = `
-        UPDATE comments
-        SET name = ?, email = ?, city = ?
-        WHERE id = ?`;
-
-    const [result] = await db.query(query, [name, email, city, id]);
-    return result;
+const updateCommentService = async (id, body) => {
+    try {
+        const query = `
+        UPDATE comments 
+        SET 
+            content = ?, 
+            num_likes = ?, 
+            num_replies = ?, 
+            likes = ?, 
+            replies = ?
+        WHERE comment_id = ?
+    `;
+        const [result] = await db.query(query, body);
+        return result;
+    } catch (error) {
+        throw error;
+    }
 };
 
 const deleteCommentService = async (id) => {
-    const query = `DELETE FROM comments WHERE id = ?`;
-    const [result] = await db.query(query, [id]);
-    return result;
+    try {
+        const query = `DELETE FROM comments WHERE id = ?`;
+        const [result] = await db.query(query, [id]);
+        return result;
+    } catch (error) {
+        throw error;
+    }
 };
 
 const deleteListCommentService = async (ids) => {
@@ -89,7 +96,7 @@ const deleteListCommentService = async (ids) => {
 module.exports = {
     getCommentsService,
     findByIdCommentService,
-    updateByIdCommentService,
+    updateCommentService,
     createCommentService,
     deleteCommentService,
     deleteListCommentService

@@ -1,15 +1,12 @@
 const express = require("express");
 const router = express.Router();
 
-const userController = require("../app/controllers/usersController")
+const commentsController = require("../app/controllers/commentsController")
 
-
-router.put('/follow', userController.follow)
-router.post('/login', userController.login)
-router.post('/', userController.createUser)
-router.get('/:id', userController.getByIdUser)
-router.put('/:id', userController.updateUser)
-router.delete('/:id', userController.deleteUser)
-router.get('/', userController.getUser)
+router.post('/', commentsController.createComment)
+router.get('/:comment_id', commentsController.getByIdComment)
+router.put('/:comment_id', commentsController.updateComment)
+router.delete('/:comment_id', commentsController.deleteComment)
+router.get('/', commentsController.getComment)
 
 module.exports = router

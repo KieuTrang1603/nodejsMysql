@@ -17,24 +17,25 @@ const findByIdVideoService = async (id) => {
 };
 
 const getVideoService = async (searchObject = {}) => {
-    let { keyword = '',
+    let { 
+        keyword = '',
         pageIndex = 10,
         pageSize = 1
     } = searchObject;
     const offset = (pageIndex - 1) * pageSize;
 
-    let dataSearch = [`%${keyword}%`, `%${keyword}%`, `%${keyword}%`]
+    let dataSearch = [`%${keyword}%`]
 
     const query = `
         SELECT * FROM video
-        WHERE name LIKE ? OR email LIKE ? OR city LIKE ?
+        WHERE title LIKE  ?
         LIMIT ? OFFSET ?`;
 
     // Truy vấn để đếm tổng số bản ghi
     const countQuery = `
         SELECT COUNT(*) AS total
         FROM video
-        WHERE name LIKE ? OR email LIKE ? OR city LIKE ?`;
+        WHERE title LIKE ? OR email LIKE ? OR city LIKE ?`;
 
     try {
         // Thực hiện cả hai truy vấn đồng thời
@@ -58,21 +59,38 @@ const getVideoService = async (searchObject = {}) => {
     }
 };
 
-const updateByIdVideoService = async (id, body) => {
-    const { name, email, city } = body;
-    const query = `
-        UPDATE video
-        SET name = ?, email = ?, city = ?
-        WHERE id = ?`;
-
-    const [result] = await db.query(query, [name, email, city, id]);
-    return result;
+const updateByIdVideoService = async (body) => {
+    try {
+        const [result] = await db.query(`
+            UPDATE user 
+            SET 
+                user_id = ?,
+                title = ?, 
+                description = ?, 
+                content = ?, 
+                num_like = ?, 
+                num_comments = ?, 
+                link_video = ?, 
+                num_views = ?, 
+                date_uploaded = ?, 
+                likes = ?, 
+                comments = ?
+            WHERE video_id = ?
+        `, body);
+        return result;
+    } catch (error) {
+        throw error;
+    }
 };
 
 const deleteVideoService = async (id) => {
-    const query = `DELETE FROM video WHERE id = ?`;
-    const [result] = await db.query(query, [id]);
-    return result;
+    try {
+        const query = `DELETE FROM video WHERE video_id = ?`;
+        const [result] = await db.query(query, [id]);
+        return result;
+    } catch (error) {
+        throw error;
+    }
 };
 
 const deleteListVideoService = async (ids) => {

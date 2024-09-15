@@ -3,7 +3,6 @@ const router = express.Router();
 
 const userController = require("../app/controllers/usersController")
 
-
 router.put('/follow', userController.follow)
 router.post('/login', userController.login)
 router.post('/', userController.createUser)

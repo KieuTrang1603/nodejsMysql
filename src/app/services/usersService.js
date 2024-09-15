@@ -7,6 +7,7 @@ const loginService = async (data) => {
     return results[0] || null;
 };
 
+//tạo tài khoản
 const createUserService = async (body) => {
     const [result] = await db.query(`
         INSERT INTO 
@@ -17,12 +18,14 @@ const createUserService = async (body) => {
     return result;
 };
 
+//lấy ra dữ liệu 1 bản ghi
 const findByIdUserService = async (id) => {
     const query = `SELECT * FROM user WHERE user_id = ?`;
     const [results] = await db.query(query, [id]);
     return results[0] || null;
 };
 
+//lấy ra danh sách
 const getUsersService = async (searchObject = {}) => {
     let { keyword = '', pageIndex = 1, pageSize = 10 } = searchObject;
     const offset = (pageIndex - 1) * pageSize;
@@ -62,15 +65,31 @@ const getUsersService = async (searchObject = {}) => {
     }
 };
 
-const updateByIdUserService = async (id, body = {}) => {
-    const { username, email, phoneNumber } = body;
-    const query = `
-        UPDATE user
-        SET username = ?, email = ?, phoneNumber = ?
-        WHERE user_id = ?`;
-
-    const [result] = await db.query(query, [username || "", email || "", phoneNumber || "", id]);
-    return result;
+//cập nhật thông tin user
+const updateUserService = async (id, body = {}) => {
+    try {
+        const query = `
+        UPDATE user 
+        SET 
+            username = ?, 
+            password = ?, 
+            fullName = ?, 
+            phoneNumber = ?, 
+            email = ?, 
+            num_following = ?, 
+            num_followers = ?, 
+            num_like = ?, 
+            avatar = ?, 
+            role = ?, 
+            followings = ?, 
+            followers = ?
+        WHERE user_id = ?
+    `;
+        const [result] = await db.query(query, body);
+        return result;
+    } catch (error) {
+        throw error;
+    }
 };
 
 const deleteUserService = async (id) => {
@@ -113,7 +132,7 @@ module.exports = {
     setFollowerService,
     getUsersService,
     findByIdUserService,
-    updateByIdUserService,
+    updateUserService,
     createUserService,
     deleteUserService
 }

@@ -3,9 +3,8 @@ const {
     createUserService,
     findByIdUserService,
     setFollowingService,
-    setFollowerService,
     loginService,
-    updateByIdUserService
+    updateUserService
 } = require("../services/usersService");
 const { v4: uuidv4 } = require('uuid');
 const jwt = require("jsonwebtoken");
@@ -130,7 +129,65 @@ const getByIdUser = async (req, res, next) => {
     }
 }
 
-const updateUser = (req, res, next) => {
+const updateUser = async (req, res, next) => {
+    const { user_id } = req.params;
+
+    const {
+        username,
+        password,
+        fullName,
+        phoneNumber,
+        email,
+        num_following,
+        num_followers,
+        num_like,
+        avatar,
+        role,
+        followings,
+        followers
+    } = req.body;
+
+    let dataUpdate = [
+        username,
+        password,
+        fullName,
+        phoneNumber,
+        email,
+        num_following || 0,
+        num_followers || 0,
+        num_like || 0,
+        avatar || null,
+        role || null,
+        followings || null,
+        followers || null,
+        user_id 
+    ];
+
+    try {
+        const result = await updateUserService(dataUpdate);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                code: 404,
+                message: 'User not found',
+            });
+        }
+
+        let updatedItem = await findByIdUserService(user_id);
+
+        res.json({
+            code: 200,
+            message: 'User updated successfully',
+            data: updatedItem
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            code: 500,
+            message: 'Error updating user',
+            error: error.message
+        });
+    }
 
 }
 const deleteUser = async (req, res, next) => {
