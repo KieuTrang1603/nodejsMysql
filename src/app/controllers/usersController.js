@@ -70,7 +70,7 @@ const createUser = async (req, res, next) => {
         num_followers,
         num_like,
         avatar,
-        role,
+        // role,
         followings,
         followers
     } = req.body;
@@ -86,7 +86,7 @@ const createUser = async (req, res, next) => {
         num_followers || 0,
         num_like || 0,
         avatar || null,
-        role || null,
+        0, //role user
         followings || null,
         followers || null,
     ]

@@ -3,7 +3,7 @@ const db = require("../../config/db");
 const createVideoService = async (body) => {
     const [result] = await db.query(`
         INSERT INTO 
-        user (video_id, user_id, title, description, content, num_like, num_comments, link_video, num_views, date_uploaded, likes, comments) 
+        video (video_id, user_id, title, description, content, num_like, num_comments, link_video, num_views, date_uploaded, likes, comments) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         body
     );
