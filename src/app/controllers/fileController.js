@@ -12,11 +12,7 @@ const storageVideo = multer.diskStorage({
         const allowedMimeTypes = ["video/mp4", "video/avi", "video/mkv"]; // Các định dạng video hợp lệ
 
         if (file.mimetype.startsWith("video/")) {
-            if (allowedMimeTypes.includes(file.mimetype)) {
                 cb(null, "public/assets/videos"); 
-            } else {
-                cb(new Error("Định dạng file video không được hỗ trợ. Chỉ chấp nhận MP4, AVI, MKV."), false);
-            }
         } else {
             cb(new Error("File không phải là video."), false);
         }
