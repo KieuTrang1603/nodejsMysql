@@ -12,7 +12,7 @@ const storageVideo = multer.diskStorage({
         const allowedMimeTypes = ["video/mp4", "video/avi", "video/mkv"]; // Các định dạng video hợp lệ
 
         if (file.mimetype.startsWith("video/")) {
-                cb(null, "public/assets/videos"); 
+            cb(null, "public/assets/videos");
         } else {
             cb(new Error("File không phải là video."), false);
         }
@@ -27,13 +27,18 @@ const storageVideo = multer.diskStorage({
 
 const storageImage = multer.diskStorage({
     destination: (req, file, cb) => {
-        if (file.mimetype === "image/jpg" ||
-            file.mimetype === "image/jpeg" ||
-            file.mimetype === "image/png") {
-            cb(null, "public/assets/image")
-            return;
+        // if (file.mimetype === "image/jpg" ||
+        //     file.mimetype === "image/jpeg" ||
+        //     file.mimetype === "image/png") {
+        //     cb(null, "public/assets/image")
+        //     return;
+        // }
+        // cb(new Error("not image"), false)
+        if (file.mimetype.startsWith("image/")) {
+            cb(null, "public/assets/image");
+        } else {
+            cb(new Error("not image."), false);
         }
-        cb(new Error("not image"), false)
     },
     filename: (req, file, cb) => {
         const ext = path.extname(file.originalname);
@@ -50,13 +55,14 @@ const uploadFileVideo = multer({
 const uploadFileImage = multer({
     storage: storageImage,
     limits: {
-        fileSize: 2 * 1024 * 1024 // Giới hạn kích thước file là 2MB
+        fileSize: 50 * 1024 * 1024 // Giới hạn kích thước file là 2MB
     },
     fileFilter: (req, file, cb) => {
         // Kiểm tra mime type
-        if (file.mimetype === 'image/jpg' ||
-            file.mimetype === 'image/jpeg' ||
-            file.mimetype === 'image/png') {
+        // if (file.mimetype === 'image/jpg' ||
+        //     file.mimetype === 'image/jpeg' ||
+        //     file.mimetype === 'image/png') {
+        if (file.mimetype.startsWith("image/")) {
             cb(null, true);
         } else {
             cb(new Error('File không phải là hình ảnh'));
@@ -71,9 +77,10 @@ const createSingleFileVideo = async (req, res, next) => {
         const error = new Error("Lỗi upload file video");
         return next(error);
     }
+
     res.json({
         message: "Upload thành công",
-        data: file,
+        data: file?.filename,
         code: 200
     });
 };
@@ -133,9 +140,9 @@ const createSingleImage = (req, res, next) => {
 
     res.json({
         message: 'Upload thành công',
-        data: file,
+        data: file?.filename,
         code: 200,
-        url: `/assets/image/${urlImage}`
+        // url: `/assets/image/${urlImage}`
     });
 }
 

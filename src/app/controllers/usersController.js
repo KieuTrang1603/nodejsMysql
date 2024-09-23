@@ -4,11 +4,12 @@ const {
     findByIdUserService,
     setFollowingService,
     loginService,
-    updateUserService
+    updateUserService,
+    checkUserExists,
+    setFollowerService
 } = require("../services/usersService");
 const { v4: uuidv4 } = require('uuid');
 const jwt = require("jsonwebtoken");
-
 
 const login = async (req, res, next) => {
     let { username, password } = req.body;
@@ -70,7 +71,6 @@ const createUser = async (req, res, next) => {
         num_followers,
         num_like,
         avatar,
-        // role,
         followings,
         followers
     } = req.body;
@@ -92,6 +92,28 @@ const createUser = async (req, res, next) => {
     ]
 
     try {
+
+        // Kiểm tra trùng username và email trước khi tạo mới
+        const userExists = await checkUserExists(username, email);
+
+        // Nếu username bị trùng
+        if (userExists.usernameExists && userExists.emailExists) {
+            return res.status(400).json({
+                code: 400,
+                message: 'Username and Email already exists'
+            });
+        } else if (userExists.usernameExists) {
+            return res.status(400).json({
+                code: 400,
+                message: 'Username already exists'
+            });
+        } else if (userExists.emailExists) {
+            return res.status(400).json({
+                code: 400,
+                message: 'Email already exists'
+            });
+        }
+
         await createUserService(dataInsert);
         let item = await findByIdUserService(user_id);
 
@@ -112,12 +134,12 @@ const createUser = async (req, res, next) => {
 
 const getByIdUser = async (req, res, next) => {
     const { user_id } = req.params;
-
+    const { isListFollower = false } = req.query
     try {
-        let item = await findByIdUserService(user_id);
+        let item = await findByIdUserService(user_id, isListFollower);
         res.json({
             code: 200,
-            message: 'Notification successfully',
+            message: 'Get by id user successfully',
             data: item
         });
     } catch (error) {
@@ -147,24 +169,28 @@ const updateUser = async (req, res, next) => {
         followers
     } = req.body;
 
-    let dataUpdate = [
-        username,
-        password,
-        fullName,
-        phoneNumber,
-        email,
-        num_following || 0,
-        num_followers || 0,
-        num_like || 0,
-        avatar || null,
-        role || null,
-        followings || null,
-        followers || null,
-        user_id 
-    ];
+    let dataUpdate = {};
+
+    if (username) dataUpdate.username = username;
+    if (password) dataUpdate.password = password;
+    if (fullName) dataUpdate.fullName = fullName;
+    if (phoneNumber) dataUpdate.phoneNumber = phoneNumber;
+    if (email) dataUpdate.email = email;
+    if (typeof num_like !== 'undefined') dataUpdate.num_like = num_like;
+    if (avatar) dataUpdate.avatar = avatar;
+    if (role) dataUpdate.role = role;
+    if (followings) {
+        dataUpdate.num_following = followings.length;
+        dataUpdate.followings = JSON.stringify(followings);
+
+    }
+    if (followers) {
+        dataUpdate.num_followers = followers.length;
+        dataUpdate.followers = JSON.stringify(followers);
+    }
 
     try {
-        const result = await updateUserService(dataUpdate);
+        const result = await updateUserService(user_id, dataUpdate);
 
         if (result.affectedRows === 0) {
             return res.status(404).json({
@@ -188,8 +214,42 @@ const updateUser = async (req, res, next) => {
             error: error.message
         });
     }
-
 }
+
+const updateUserAvatar = async (req, res, next) => {
+    const { user_id } = req.params;
+    const { avatar } = req.body;
+
+    let dataUpdate = {};
+    if (avatar) dataUpdate.avatar = avatar;
+
+    try {
+        const result = await updateUserService(user_id, dataUpdate);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                code: 404,
+                message: 'User not found',
+            });
+        }
+
+        let updatedItem = await findByIdUserService(user_id);
+
+        res.json({
+            code: 200,
+            message: 'User updated successfully',
+            data: updatedItem
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            code: 500,
+            message: 'Error updating user',
+            error: error.message
+        });
+    }
+}
+
 const deleteUser = async (req, res, next) => {
     const { user_id } = req.params;
 
@@ -238,32 +298,31 @@ const follow = async (req, res, next) => {
         let indexFollowings = followings?.findIndex(item => item === following_id)
         if (!(indexFollowings > -1)) {
             followings.push(following_id);
-            await setFollowingService([JSON.stringify(followings), user_id]);
-        } else if (!isFollow) {
+            await setFollowingService([JSON.stringify(followings), followings?.length, user_id]);
+        } else {
             followings.splice(indexFollowings, 1);
-            await setFollowingService([JSON.stringify(followings), user_id]);
+            await setFollowingService([JSON.stringify(followings), followings?.length, user_id]);
         }
 
-        //following
+        //follower
         let userFollower = await findByIdUserService(following_id);
         let followers = userFollower?.followers || [];
 
         let indexFollowers = followers?.findIndex(item => item === user_id)
         if (!(indexFollowers > -1)) {
             followers.push(user_id);
-            await setFollowingService([JSON.stringify(followings), user_id]);
-        } else if (!isFollow) {
+            await setFollowerService([JSON.stringify(followers), followers?.length, following_id]);
+        } else {
             followers.splice(indexFollowers, 1);
-            await setFollowingService([JSON.stringify(followers), following_id]);
+            await setFollowerService([JSON.stringify(followers), followers?.length, following_id]);
         }
+
+        let updatedItem = await findByIdUserService(user_id);
 
         return res.json({
             code: 200,
-            message: `Đã ${!isFollow ? "bỏ " : ""}follow ${userFollower?.fullName || ""}`,
-            data: {
-                ...userFollowing,
-                followings
-            },
+            message: `Đã ${(indexFollowings > -1) ? "bỏ " : ""}follow ${userFollower?.fullName || ""}`,
+            data: updatedItem,
         })
     } catch (error) {
         res.status(500).json({
@@ -282,4 +341,5 @@ module.exports = {
     getByIdUser,
     updateUser,
     deleteUser,
+    updateUserAvatar
 }

@@ -3,8 +3,8 @@ const db = require("../../config/db");
 const createVideoService = async (body) => {
     const [result] = await db.query(`
         INSERT INTO 
-        video (video_id, user_id, title, description, content, num_like, num_comments, link_video, num_views, date_uploaded, likes, comments) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        video (video_id, user_id, content, num_like, num_comments, fileName, num_views, date_uploaded, likes, comments) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         body
     );
     return result;
@@ -17,41 +17,74 @@ const findByIdVideoService = async (id) => {
 };
 
 const getVideoService = async (searchObject = {}) => {
-    let { 
+    let {
         keyword = '',
-        pageIndex = 10,
-        pageSize = 1
+        pageIndex = 1,
+        pageSize = 2000,
+        user_id = null,
+        video_id = null
     } = searchObject;
+
     const offset = (pageIndex - 1) * pageSize;
+    const conditions = [];
+    const params = [];
 
-    let dataSearch = [`%${keyword}%`]
+    // Thêm điều kiện tìm kiếm keyword nếu có
+    if (keyword) {
+        conditions.push('content LIKE ?');
+        params.push(`%${keyword}%`);
+    }
 
+    // Thêm điều kiện tìm theo userId nếu có
+    if (user_id) {
+        conditions.push('video.user_id = ?');
+        params.push(user_id);
+    }
+
+    // Thêm điều kiện tìm theo userId nếu có
+    if (video_id) {
+        conditions.push('video.video_id = ?');
+        params.push(video_id);
+    }
+
+    // Kết hợp các điều kiện WHERE bằng AND nếu có ít nhất một điều kiện
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    // Thêm điều kiện phân trang
+    const limit = parseInt(pageSize, 10);
+    const offsetValue = parseInt(offset, 10);
+    params.push(limit, offsetValue);
+
+    // Câu truy vấn chính
     const query = `
-        SELECT * FROM video
-        WHERE title LIKE  ?
+        SELECT video.*, user.username, user.avatar
+        FROM video
+        JOIN user ON video.user_id = user.user_id
+        ${whereClause}
         LIMIT ? OFFSET ?`;
 
-    // Truy vấn để đếm tổng số bản ghi
+    // Câu truy vấn để đếm tổng số bản ghi
     const countQuery = `
         SELECT COUNT(*) AS total
         FROM video
-        WHERE title LIKE ? OR email LIKE ? OR city LIKE ?`;
+        ${whereClause}`;
 
     try {
-        // Thực hiện cả hai truy vấn đồng thời
+        // Thực hiện truy vấn
         const [results, countResults] = await Promise.all([
-            db.query(query, [...dataSearch, pageSize, offset]),
-            db.query(countQuery, dataSearch)
+            db.query(query, params),
+            db.query(countQuery, params.slice(0, params.length - 2))  // Bỏ phân trang cho truy vấn đếm
         ]);
 
-        // Lấy tổng số bản ghi từ truy vấn đếm
         const total = countResults[0][0].total;
+        const totalPage = Math.ceil(total / pageSize)
 
         return {
             content: results?.[0] || [],
-            total: total,
-            pageSize: results?.[0]?.length || 0,
-            pageIndex: pageIndex
+            total,
+            totalPage,
+            numberOfElements: results?.[0]?.length || 0,
+            pageIndex
         };
     } catch (error) {
         console.error(error);
@@ -59,37 +92,149 @@ const getVideoService = async (searchObject = {}) => {
     }
 };
 
-const updateByIdVideoService = async (body) => {
+const updateByIdVideoService = async (video_id, dataUpdate) => {
     try {
-        const [result] = await db.query(`
-            UPDATE user 
-            SET 
-                user_id = ?,
-                title = ?, 
-                description = ?, 
-                content = ?, 
-                num_like = ?, 
-                num_comments = ?, 
-                link_video = ?, 
-                num_views = ?, 
-                date_uploaded = ?, 
-                likes = ?, 
-                comments = ?
+        let fields = [];
+        let values = [];
+
+        // Lặp qua các key-value trong dataUpdate và xây dựng câu truy vấn động
+        Object.keys(dataUpdate).forEach(field => {
+            fields.push(`${field} = ?`);
+            values.push(dataUpdate[field]);
+        });
+        values.push(video_id);
+
+        const query = `
+            UPDATE video 
+            SET ${fields.join(', ')} 
             WHERE video_id = ?
-        `, body);
+            `;
+        const [result] = await db.query(query, values);
         return result;
     } catch (error) {
         throw error;
     }
 };
 
-const deleteVideoService = async (id) => {
+//tăng view
+const incrementViewService = async (video_id) => {
     try {
-        const query = `DELETE FROM video WHERE video_id = ?`;
-        const [result] = await db.query(query, [id]);
-        return result;
+        // Tăng num_views lên 1
+        const [result] = await db.query(`
+            UPDATE video
+            SET num_views = num_views + 1
+            WHERE video_id = ?
+        `, [video_id]);
+
+        return result.affectedRows;
     } catch (error) {
         throw error;
+    }
+};
+
+//cập nhật tổng số num_comments trong video
+const updateVideoCommentCount = async (video_id) => {
+    try {
+        const query = `
+            UPDATE video
+            SET num_comments = (
+                SELECT COUNT(*) 
+                FROM comments
+                WHERE video_id = ?
+            )
+            WHERE video_id = ?
+        `;
+        await db.query(query, [video_id, video_id]);
+    } catch (error) {
+        throw new Error('Error updating num_comments in video');
+    }
+};
+
+//cập nhật yêu thích
+const updateLikeService = async (video_id, likes, user_id) => {
+    try {
+        const num_like = likes?.length || 0;
+
+        // Chuyển đổi mảng likes thành chuỗi JSON
+        const likesJson = JSON.stringify(likes);
+
+        // Cập nhật số lượng likes và danh sách likes trong cơ sở dữ liệu
+        const updateVideoQuery = `
+            UPDATE video
+            SET 
+                num_like = ?, 
+                likes = ?
+            WHERE video_id = ?
+        `;
+
+        // Cập nhật video trước
+        await db.query(updateVideoQuery, [num_like, likesJson, video_id]);
+
+        // Tính tổng số likes của tất cả video mà user này sở hữu
+        const totalLikesQuery = `
+            SELECT SUM(num_like) AS totalLikes 
+            FROM video 
+            WHERE user_id = ?
+        `;
+        const [totalLikesResult] = await db.query(totalLikesQuery, [user_id]);
+        const totalLikes = totalLikesResult[0]?.totalLikes || 0;
+
+        // Cập nhật tổng số likes cho user trong bảng user
+        const updateUserQuery = `
+            UPDATE user
+            SET num_like = ?
+            WHERE user_id = ?
+        `;
+        await db.query(updateUserQuery, [totalLikes, user_id]);
+
+        return true;
+    } catch (error) {
+        throw error;
+    }
+};
+
+const deleteVideoService = async (id) => {
+    const connection = await db.getConnection();  // Lấy connection để quản lý transaction
+    try {
+        await connection.beginTransaction(); // Bắt đầu transaction
+
+        // Xóa các comment liên quan đến video
+        const deleteCommentsQuery = `DELETE FROM comments WHERE video_id = ?`;
+        await connection.query(deleteCommentsQuery, [id]);
+
+        // Xóa video
+        const deleteVideoQuery = `DELETE FROM video WHERE video_id = ?`;
+        const [result] = await connection.query(deleteVideoQuery, [id]);
+
+        await connection.commit(); // Commit transaction nếu mọi thứ ổn
+        return result;
+    } catch (error) {
+        await connection.rollback(); // Rollback transaction nếu có lỗi
+        throw error;
+    } finally {
+        connection.release(); // Giải phóng connection
+    }
+};
+
+const deleteChildComments = async (connection, parentCommentId) => {
+    // Truy vấn lấy các comment con từ cột 'replies' của comment cha
+    const query = `SELECT replies FROM comments WHERE comment_id = ?`;
+    const [rows] = await connection.query(query, [parentCommentId]);
+
+    if (rows.length > 0 && rows[0].replies) {
+        const replies = JSON.parse(rows[0].replies); // Parse replies JSON để lấy danh sách comment con
+        const childCommentIds = Object.keys(replies); // Lấy danh sách các comment con
+
+        if (childCommentIds.length > 0) {
+            // Dùng hàm đệ quy để tiếp tục xóa các comment con của chúng
+            for (const childId of childCommentIds) {
+                await deleteChildComments(connection, childId); // Gọi đệ quy để xóa comment con
+            }
+
+            // Xóa các comment con sau khi xử lý đệ quy
+            const deleteChildQuery = `DELETE FROM comments WHERE comment_id IN (${childCommentIds.map(() => '?').join(',')})`;
+            await connection.query(deleteChildQuery, childCommentIds);
+        }
     }
 };
 
@@ -98,18 +243,53 @@ const deleteListVideoService = async (ids) => {
         throw new Error('Danh sách ID không hợp lệ');
     }
 
-    // Tạo chuỗi tham số cho câu truy vấn SQL
-    const placeholders = ids.map(() => '?').join(',');
-    const query = `DELETE FROM video WHERE id IN (${placeholders})`;
+    const connection = await db.getConnection(); // Lấy connection để quản lý transaction
+    try {
+        await connection.beginTransaction(); // Bắt đầu transaction
 
-    const [result] = await db.query(query, ids);
-    return result;
+        // Tạo chuỗi placeholders cho câu truy vấn SQL
+        const placeholders = ids.map(() => '?').join(',');
+
+        // Bước 1: Lấy tất cả comment_id của các comment cha liên quan đến video
+        const selectParentCommentsQuery = `SELECT comment_id FROM comments WHERE video_id IN (${placeholders})`;
+        const [parentComments] = await connection.query(selectParentCommentsQuery, ids);
+
+        if (parentComments.length > 0) {
+            // Tạo danh sách các comment cha
+            const parentCommentIds = parentComments.map(comment => comment.comment_id);
+
+            // Xóa đệ quy các comment con từ mỗi comment cha
+            for (const parentId of parentCommentIds) {
+                await deleteChildComments(connection, parentId);
+            }
+
+            // Xóa tất cả các comment cha sau khi xóa hết comment con
+            const deleteParentCommentsQuery = `DELETE FROM comments WHERE comment_id IN (${parentCommentIds.map(() => '?').join(',')})`;
+            await connection.query(deleteParentCommentsQuery, parentCommentIds);
+        }
+
+        // Bước 2: Xóa video sau khi đã xóa hết comment liên quan
+        const deleteVideosQuery = `DELETE FROM video WHERE video_id IN (${placeholders})`;
+        const [result] = await connection.query(deleteVideosQuery, ids);
+
+        await connection.commit(); // Commit transaction nếu mọi thứ ổn
+        return result;
+    } catch (error) {
+        await connection.rollback(); // Rollback transaction nếu có lỗi
+        throw error;
+    } finally {
+        connection.release(); // Giải phóng connection
+    }
 };
 
 module.exports = {
+    incrementViewService,
+    updateLikeService,
     getVideoService,
     findByIdVideoService,
     updateByIdVideoService,
     createVideoService,
-    deleteVideoService
+    deleteVideoService,
+    updateVideoCommentCount,
+    deleteListVideoService
 }

@@ -5,7 +5,7 @@ const commentsRouter = require("./commentsRouter")
 const videosRouter = require("./videosRouter")
 
 function route(app) {
-    app.use("/admin/api/users", usersRouter)
+    app.use("/api/users", usersRouter)
     app.use("/api/file", filesRouter)
     app.use("/api/notification", notificationsRouter)
     app.use("/api/comments", commentsRouter)
