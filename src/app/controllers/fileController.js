@@ -5,21 +5,20 @@ const multer = require("multer");
 const router = express.Router();
 const fs = require("fs");
 const path = require("path");
+const { spawn } = require('child_process');
+const ffmpegPath = require('ffmpeg-static');
 
-let urlVideo, urlImage; // Đổi tên biến cho dễ hiểu hơn
+let urlVideo, urlImage;
 const storageVideo = multer.diskStorage({
     destination: (req, file, cb) => {
-        const allowedMimeTypes = ["video/mp4", "video/avi", "video/mkv"]; // Các định dạng video hợp lệ
-
         if (file.mimetype.startsWith("video/")) {
-                cb(null, "public/assets/videos"); 
+            cb(null, "public/assets/videos");
         } else {
             cb(new Error("File không phải là video."), false);
         }
     },
     filename: (req, file, cb) => {
         const ext = path.extname(file.originalname);
-        // urlImage = Date.now() + ext;
         urlVideo = uuidv4() + ext;
         cb(null, urlVideo)
     }
@@ -27,18 +26,16 @@ const storageVideo = multer.diskStorage({
 
 const storageImage = multer.diskStorage({
     destination: (req, file, cb) => {
-        if (file.mimetype === "image/jpg" ||
-            file.mimetype === "image/jpeg" ||
-            file.mimetype === "image/png") {
-            cb(null, "public/assets/image")
-            return;
+        if (file.mimetype.startsWith("image/")) {
+            cb(null, "public/assets/image");
+        } else {
+            cb(new Error("not image."), false);
         }
-        cb(new Error("not image"), false)
     },
     filename: (req, file, cb) => {
         const ext = path.extname(file.originalname);
         // urlImage = Date.now() + ext;
-        urlImage = uuidv4() + ext;
+        urlImage = uuidv4() + ".mp4";
         cb(null, urlImage)
     }
 })
@@ -50,13 +47,14 @@ const uploadFileVideo = multer({
 const uploadFileImage = multer({
     storage: storageImage,
     limits: {
-        fileSize: 2 * 1024 * 1024 // Giới hạn kích thước file là 2MB
+        fileSize: 50 * 1024 * 1024 // Giới hạn kích thước file là 2MB
     },
     fileFilter: (req, file, cb) => {
         // Kiểm tra mime type
-        if (file.mimetype === 'image/jpg' ||
-            file.mimetype === 'image/jpeg' ||
-            file.mimetype === 'image/png') {
+        // if (file.mimetype === 'image/jpg' ||
+        //     file.mimetype === 'image/jpeg' ||
+        //     file.mimetype === 'image/png') {
+        if (file.mimetype.startsWith("image/")) {
             cb(null, true);
         } else {
             cb(new Error('File không phải là hình ảnh'));
@@ -71,9 +69,10 @@ const createSingleFileVideo = async (req, res, next) => {
         const error = new Error("Lỗi upload file video");
         return next(error);
     }
+
     res.json({
         message: "Upload thành công",
-        data: file,
+        data: file?.filename,
         code: 200
     });
 };
@@ -133,17 +132,14 @@ const createSingleImage = (req, res, next) => {
 
     res.json({
         message: 'Upload thành công',
-        data: file,
+        data: file?.filename,
         code: 200,
-        url: `/assets/image/${urlImage}`
     });
 }
 
 const viewImage = (req, res, next) => {
-    // Sử dụng path.join để xây dựng đường dẫn an toàn hơn
     const imagePath = path.join(__dirname, '../../../public/assets/image', req.query.fileName);
 
-    // Kiểm tra xem file có tồn tại không
     fs.access(imagePath, fs.constants.F_OK, (err) => {
         if (err) {
             return res.status(404).json({
@@ -163,16 +159,130 @@ const viewImage = (req, res, next) => {
 
             // Xác định Content-Type dựa trên đuôi file (có thể là jpg, png, gif...)
             const ext = path.extname(imagePath).toLowerCase();
-            let contentType = 'image/jpeg'; // Mặc định là jpeg
+            let contentType = 'image/jpeg';
             if (ext === '.png') contentType = 'image/png';
             else if (ext === '.gif') contentType = 'image/gif';
 
-            // Trả về ảnh với Content-Type thích hợp
             res.writeHead(200, { 'Content-Type': contentType });
             res.end(imageData);
         });
     });
 }
+
+
+//lưu video chất lượng cao
+const convertVideoToHLS = (inputPath, outputDir, callback) => {
+    const resolutions = [
+        { name: '1080p', width: 1920, height: 1080, bitrate: '5000k' },
+        { name: '720p', width: 1280, height: 720, bitrate: '3000k' },
+        { name: '480p', width: 854, height: 480, bitrate: '1500k' },    
+    ];
+
+    // Lệnh ffmpeg cho từng chất lượng
+    const commands = resolutions.map(res => {
+        return spawn(ffmpegPath, [
+            '-i', inputPath,                           // Input video
+            '-vf', `scale=${res.width}:-2`,            // Thay đổi độ phân giải video
+            "-strict", -2,
+            '-c:v', 'libx264',                         // Codec video
+            '-b:v', res.bitrate,                       // Bitrate của video
+            '-hls_time', '10',                         // Thời lượng mỗi chunk là 10s
+            '-hls_playlist_type', 'vod',               // Playlist cho VOD
+            '-f', 'hls',                               // Định dạng đầu ra HLS
+            path.join(outputDir, `${res.name}_playlist.m3u8`) // Playlist đầu ra cho mỗi chất lượng
+        ]);
+    });
+
+    let finished = 0;
+    const totalCommands = commands.length;
+    commands.forEach(async(command, index) => {
+        await command.stderr.on('data', (data) => {
+            console.error(`stderr: ${data.toString()}`);
+        });
+        
+        await command.stdout.on('data', (data) => {
+            console.log(`stdout: ${data.toString()}`);
+        });
+
+        await command.on('close', (code) => {
+            if (code === 0) {
+                finished++;
+                if (finished === totalCommands) {
+                    // Khi tất cả lệnh ffmpeg hoàn thành, tạo master playlist
+                    createMasterPlaylist(outputDir, resolutions);
+                    callback(null, path.join(outputDir, 'master.m3u8'));
+                }
+            } else {
+                callback(new Error('Lỗi trong quá trình chuyển đổi video sang HLS'));
+            }
+        });
+    });
+};
+
+const createMasterPlaylist = (outputDir, resolutions) => {
+    const masterPlaylistContent = [
+        '#EXTM3U',
+        '#EXT-X-VERSION:3',
+        ...resolutions.map(res => {
+            const bandwidth = parseInt(res.bitrate) * 1000;
+            return `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},RESOLUTION=${res.width}x${res.height}\n${res.name}_playlist.m3u8`;
+        }),
+    ].join('\n');
+
+    const masterPlaylistPath = path.join(outputDir, 'master.m3u8');
+    fs.writeFileSync(masterPlaylistPath, masterPlaylistContent);
+};
+
+
+const createSingleFileVideoHLS = async (req, res, next) => {
+    const file = req.file;
+
+    if (!file || file.length <= 0) {
+        return next(new Error("Lỗi upload file video"));
+    }
+
+    const videoPath = path.join(__dirname, "../../../public/assets/videos", file.filename);
+    const hlsOutputDir = path.join(__dirname, "../../../public/assets/hls", file?.filename?.split('.')?.[0] || uuidv4());
+
+    fs.mkdirSync(hlsOutputDir, { recursive: true });
+
+    convertVideoToHLS(videoPath, hlsOutputDir, (err, playlistPath) => {
+        if (err) {
+            return next(err);
+        }
+
+        res.json({
+            message: "Upload và chuyển đổi thành công",
+            data: `${path.basename(hlsOutputDir)}`,
+            // playlistUrl: `/hls/${path.basename(hlsOutputDir)}/master.m3u8`,
+            code: 200
+        });
+    });
+};
+
+const viewFileVideoHLS = (req, res, next) => {
+    const hlsDir = path.join(__dirname, "../../../public/assets/hls", req.params.hlsId);
+    const fileName = req.params.segment;
+
+    const filePath = path.join(hlsDir, fileName);
+
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ code: 404, message: "File không tìm thấy" });
+    }
+
+    const ext = path.extname(fileName).toLowerCase();
+    let contentType = 'application/vnd.apple.mpegurl';  // Default cho .m3u8
+    if (ext === '.ts') contentType = 'video/mp2t';  // Cho các tệp .ts
+
+    fs.readFile(filePath, (err, data) => {
+        if (err) {
+            return res.status(500).json({ code: 500, message: "Không đọc được file" });
+        }
+
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(data);
+    });
+};
 
 module.exports = {
     createSingleFileVideo,
@@ -180,5 +290,7 @@ module.exports = {
     uploadFileImage,
     uploadFileVideo,
     viewFileVideo,
-    viewImage
+    viewImage,
+    createSingleFileVideoHLS,
+    viewFileVideoHLS,
 }
