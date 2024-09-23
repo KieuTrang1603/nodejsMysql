@@ -9,14 +9,17 @@ const path = require("path");
 let urlVideo, urlImage; // Đổi tên biến cho dễ hiểu hơn
 const storageVideo = multer.diskStorage({
     destination: (req, file, cb) => {
-        // Chỉ cho phép upload các định dạng video
-        if (file.mimetype === "video/mp4" ||
-            file.mimetype === "video/avi" ||
-            file.mimetype === "video/mkv") {
-            cb(null, "public/assets/videos") // Thay đổi thư mục lưu video
-            return;
+        const allowedMimeTypes = ["video/mp4", "video/avi", "video/mkv"]; // Các định dạng video hợp lệ
+
+        if (file.mimetype.startsWith("video/")) {
+            if (allowedMimeTypes.includes(file.mimetype)) {
+                cb(null, "public/assets/videos"); 
+            } else {
+                cb(new Error("Định dạng file video không được hỗ trợ. Chỉ chấp nhận MP4, AVI, MKV."), false);
+            }
+        } else {
+            cb(new Error("File không phải là video."), false);
         }
-        cb(new Error("not video"), false); // Nếu không phải video, trả về lỗi
     },
     filename: (req, file, cb) => {
         const ext = path.extname(file.originalname);
@@ -44,7 +47,10 @@ const storageImage = multer.diskStorage({
     }
 })
 
-const uploadFileVideo = multer({ storage: storageVideo });
+const uploadFileVideo = multer({
+    storage: storageVideo,
+    limits: { fileSize: 50 * 1024 * 1024 }
+});
 const uploadFileImage = multer({
     storage: storageImage,
     limits: {
@@ -121,7 +127,7 @@ const viewFileVideo = (req, res, next) => {
 
 const createSingleImage = (req, res, next) => {
     const file = req.file;
-    
+
     if (!file) {
         return res.status(400).json({
             code: 400,
