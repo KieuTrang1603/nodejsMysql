@@ -172,33 +172,64 @@ const viewImage = (req, res, next) => {
 
 //lưu video chất lượng cao
 const convertVideoToHLS = (inputPath, outputDir, callback) => {
-    const outputPlaylist = path.join(outputDir, 'playlist.m3u8');
-    
-    const ffmpeg = spawn(ffmpegPath, [
-        '-i', inputPath,                 // Input video
-        '-hls_time', '10',               // Thời lượng mỗi chunk là 10s
-        '-hls_playlist_type', 'vod',     // Playlist cho VOD
-        '-f', 'hls',                     // Định dạng đầu ra HLS
-        path.join(outputDir, 'playlist.m3u8') // Tệp playlist đầu ra
-    ]);
+    const resolutions = [
+        { name: '1080p', width: 1920, height: 1080, bitrate: '5000k' },
+        { name: '720p', width: 1280, height: 720, bitrate: '3000k' },
+        { name: '480p', width: 854, height: 480, bitrate: '1500k' }
+    ];
 
-    ffmpeg.stdout.on('data', (data) => {
-        console.log(`stdout: ${data}`);
+    // Lệnh ffmpeg cho từng chất lượng
+    const commands = resolutions.map(res => {
+        return spawn(ffmpegPath, [
+            '-i', inputPath,                           // Input video
+            '-vf', `scale=w=${res.width}:h=${res.height}`,  // Thay đổi độ phân giải video
+            '-c:v', 'libx264',                         // Codec video
+            '-b:v', res.bitrate,                       // Bitrate của video
+            '-hls_time', '10',                         // Thời lượng mỗi chunk là 10s
+            '-hls_playlist_type', 'vod',               // Playlist cho VOD
+            '-f', 'hls',                               // Định dạng đầu ra HLS
+            path.join(outputDir, `${res.name}_playlist.m3u8`) // Playlist đầu ra cho mỗi chất lượng
+        ]);
     });
 
-    ffmpeg.stderr.on('data', (data) => {
-        console.error(`stderr: ${data}`);
-    });
+    let finished = 0;
+    const totalCommands = commands.length;
+    commands.forEach((command, index) => {
+        command.stderr.on('data', (data) => {
+            console.error(`stderr: ${data}`);
+        });
 
-    ffmpeg.on('close', (code) => {
-        if (code === 0) {
-            console.log("Chuyển đổi HLS thành công");
-            callback(null, outputPlaylist);
-        } else {
-            callback(new Error('Lỗi trong quá trình chuyển đổi video sang HLS'));
-        }
+        command.on('close', (code) => {
+            if (code === 0) {
+                console.log(`Chuyển đổi HLS cho ${resolutions[index].name} thành công`);
+                finished++;
+                if (finished === totalCommands) {
+                    // Khi tất cả lệnh ffmpeg hoàn thành, tạo master playlist
+                    createMasterPlaylist(outputDir, resolutions);
+                    callback(null, path.join(outputDir, 'master.m3u8'));
+                }
+            } else {
+                callback(new Error('Lỗi trong quá trình chuyển đổi video sang HLS'));
+            }
+        });
     });
 };
+
+const createMasterPlaylist = (outputDir, resolutions) => {
+    const masterPlaylistContent = [
+        '#EXTM3U',
+        '#EXT-X-VERSION:3',
+        ...resolutions.map(res => {
+            const bandwidth = parseInt(res.bitrate) * 1000;
+            return `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},RESOLUTION=${res.width}x${res.height}\n${res.name}_playlist.m3u8`;
+        }),
+    ].join('\n');
+
+    const masterPlaylistPath = path.join(outputDir, 'master.m3u8');
+    fs.writeFileSync(masterPlaylistPath, masterPlaylistContent);
+    console.log("Tạo master playlist thành công");
+};
+
 
 const createSingleFileVideoHLS = async (req, res, next) => {
     const file = req.file;
@@ -219,15 +250,16 @@ const createSingleFileVideoHLS = async (req, res, next) => {
 
         res.json({
             message: "Upload và chuyển đổi thành công",
-            playlistUrl: `/hls/${path.basename(hlsOutputDir)}/playlist.m3u8`,
+            data:`${path.basename(hlsOutputDir)}`,
+            // playlistUrl: `/hls/${path.basename(hlsOutputDir)}/master.m3u8`,
             code: 200
         });
     });
 };
 
 const viewFileVideoHLS = (req, res, next) => {
-    const hlsDir = path.join(__dirname, "../../../public/assets/hls", req.params.hlsId); // Đường dẫn đến thư mục HLS
-    const fileName = req.params.segment
+    const hlsDir = path.join(__dirname, "../../../public/assets/hls", req.params.hlsId);
+    const fileName = req.params.segment;
 
     const filePath = path.join(hlsDir, fileName);
 
@@ -236,8 +268,8 @@ const viewFileVideoHLS = (req, res, next) => {
     }
 
     const ext = path.extname(fileName).toLowerCase();
-    let contentType = 'application/vnd.apple.mpegurl'; 
-    if (ext === '.ts') contentType = 'video/mp2t';
+    let contentType = 'application/vnd.apple.mpegurl';  // Default cho .m3u8
+    if (ext === '.ts') contentType = 'video/mp2t';  // Cho các tệp .ts
 
     fs.readFile(filePath, (err, data) => {
         if (err) {
@@ -247,7 +279,7 @@ const viewFileVideoHLS = (req, res, next) => {
         res.writeHead(200, { 'Content-Type': contentType });
         res.end(data);
     });
-}
+};
 
 module.exports = {
     createSingleFileVideo,
