@@ -17,6 +17,7 @@
     "dotenv": "^8.2.0",
     "express": "^4.19.2",
     "express-fileupload": "^1.4.0",
+    "ffmpeg-static": "^5.2.0",
     "jsonwebtoken": "^9.0.0",
     "moment": "^2.29.4",
     "mongoose": "^7.0.2",
