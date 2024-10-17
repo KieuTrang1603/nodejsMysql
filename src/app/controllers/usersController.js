@@ -6,7 +6,9 @@ const {
     loginService,
     updateUserService,
     checkUserExists,
-    setFollowerService
+    setFollowerService,
+    deleteUserService,
+    deleteListUserService
 } = require("../services/usersService");
 const { v4: uuidv4 } = require('uuid');
 const jwt = require("jsonwebtoken");
@@ -254,7 +256,7 @@ const deleteUser = async (req, res, next) => {
     const { user_id } = req.params;
 
     try {
-        const result = await deleteUser(user_id);
+        const result = await deleteUserService(user_id);
 
         // Kiểm tra nếu không có bản ghi nào bị xóa
         if (result.affectedRows === 0) {
@@ -276,6 +278,44 @@ const deleteUser = async (req, res, next) => {
         });
     }
 }
+
+const deleteUsers = async (req, res, next) => {
+    const { ids } = req.query;
+    const user_ids = ids.split(',');
+
+    try {
+        // Kiểm tra nếu không có danh sách ID hoặc mảng trống
+        if (!user_ids || !Array.isArray(user_ids) || user_ids.length === 0) {
+            return res.status(400).json({
+                code: 400,
+                message: 'Comment IDs not provided or invalid',
+            });
+        }
+
+        // Xóa các comment và tất cả các comment con
+        console.log(user_ids)
+        const result = await deleteListUserService(user_ids);
+
+        // Kiểm tra nếu không có bản ghi nào bị xóa
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                code: 404,
+                message: 'Comments not found',
+            });
+        }
+
+        res.json({
+            code: 200,
+            message: 'Comments deleted successfully',
+        });
+    } catch (error) {
+        res.status(500).json({
+            code: 500,
+            message: 'Error deleting comments',
+            error: error.message,
+        });
+    }
+};
 
 //follow
 const follow = async (req, res, next) => {
@@ -322,7 +362,10 @@ const follow = async (req, res, next) => {
         return res.json({
             code: 200,
             message: `Đã ${(indexFollowings > -1) ? "bỏ " : ""}follow ${userFollower?.fullName || ""}`,
-            data: updatedItem,
+            data: {
+                ...updatedItem,
+                isFollow: !(indexFollowings > -1)
+            }
         })
     } catch (error) {
         res.status(500).json({
@@ -341,5 +384,6 @@ module.exports = {
     getByIdUser,
     updateUser,
     deleteUser,
+    deleteUsers,
     updateUserAvatar
 }

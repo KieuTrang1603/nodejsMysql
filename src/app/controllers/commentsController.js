@@ -234,13 +234,14 @@ const deleteComments = async (req, res, next) => {
 
     try {
         // Kiểm tra nếu không có danh sách ID hoặc mảng trống
-        if (!comment_ids || !Array.isArray(comment_ids) || comment_ids?.length === 0) {
+        if (!comment_ids || !Array.isArray(comment_ids) || comment_ids.length === 0) {
             return res.status(400).json({
                 code: 400,
                 message: 'Comment IDs not provided or invalid',
             });
         }
 
+        // Xóa các comment và tất cả các comment con
         const result = await deleteListCommentService(comment_ids);
 
         // Kiểm tra nếu không có bản ghi nào bị xóa
@@ -253,13 +254,13 @@ const deleteComments = async (req, res, next) => {
 
         res.json({
             code: 200,
-            message: 'Comments deleted successfully'
+            message: 'Comments deleted successfully',
         });
     } catch (error) {
         res.status(500).json({
             code: 500,
             message: 'Error deleting comments',
-            error: error.message
+            error: error.message,
         });
     }
 };

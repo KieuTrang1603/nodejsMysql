@@ -202,7 +202,10 @@ const updateLike = async (req, res) => {
         res.json({
             code: 200,
             message: `Like ${!(index > -1) ? 'increased' : 'decreased'} successfully`,
-            data: item
+            data: {
+                ...item,
+                isLike: !(index > -1)
+            }
         });
     } catch (error) {
         res.status(500).json({

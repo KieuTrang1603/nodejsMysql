@@ -1,4 +1,5 @@
 const db = require("../../config/db");
+const { deleteListVideoService } = require("./videosService");
 
 //login
 const loginService = async (data) => {
@@ -167,11 +168,15 @@ const deleteListUserService = async (ids) => {
         throw new Error('Danh sách ID không hợp lệ');
     }
 
-    // Tạo chuỗi tham số cho câu truy vấn SQL
     const placeholders = ids.map(() => '?').join(',');
-    const query = `DELETE FROM user WHERE user_id IN (${placeholders})`;
 
-    const [result] = await db.query(query, ids);
+    const getVideosQuery = `SELECT video_id FROM video WHERE user_id IN (${placeholders})`;
+    const [videos] = await db.query(getVideosQuery, ids);
+    const videoIds = videos.map(video => video.video_id);
+    await deleteListVideoService(videoIds)
+
+    const deleteUserQuery = `DELETE FROM user WHERE user_id IN (${placeholders})`;
+    const [result] = await db.query(deleteUserQuery, ids);
     return result;
 };
 
@@ -198,5 +203,6 @@ module.exports = {
     findByIdUserService,
     updateUserService,
     createUserService,
+    deleteListUserService,
     deleteUserService
 }

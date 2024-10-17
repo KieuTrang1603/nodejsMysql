@@ -251,22 +251,13 @@ const deleteListVideoService = async (ids) => {
         const placeholders = ids.map(() => '?').join(',');
 
         // Bước 1: Lấy tất cả comment cha liên quan đến video
-        const selectParentCommentsQuery = `SELECT comment_id FROM comments WHERE video_id IN (${placeholders}) AND parent_comment_id IS NULL`;
+        const selectParentCommentsQuery = `SELECT comment_id FROM comments WHERE video_id IN (${placeholders})`;
         const [parentComments] = await connection.query(selectParentCommentsQuery, ids);
         
         if (parentComments.length > 0) {
-            // Tạo danh sách các comment cha
-            const parentCommentIds = parentComments.map(comment => comment.comment_id);
-            console.log("parentCommentIds", parentCommentIds)
-
-            // Xóa đệ quy các comment con từ mỗi comment cha
-            for (const parentId of parentCommentIds) {
-                await deleteChildComments(connection, parentId);
-            }
-
-            // Xóa tất cả các comment cha sau khi xóa hết comment con
-            const deleteParentCommentsQuery = `DELETE FROM comments WHERE comment_id IN (${parentCommentIds.map(() => '?').join(',')})`;
-            await connection.query(deleteParentCommentsQuery, parentCommentIds);
+            const allCommentIds = parentComments.map(comment => comment.comment_id);
+            const deleteParentCommentsQuery = `DELETE FROM comments WHERE comment_id IN (${allCommentIds.map(() => '?').join(',')})`;
+            await connection.query(deleteParentCommentsQuery, allCommentIds);
         }
 
         // Bước 2: Lấy user_id của các video sẽ bị xóa để cập nhật lại num_like

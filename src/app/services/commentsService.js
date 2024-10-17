@@ -175,31 +175,42 @@ const deleteCommentService = async (id) => {
     }
 };
 
+const getAllChildComments = async (commentIds) => {
+    let allCommentIds = [...commentIds];
+    let newCommentIds = [...commentIds];
+
+    // Vòng lặp để truy xuất tất cả các comment con
+    while (newCommentIds.length > 0) {
+        const placeholders = newCommentIds.map(() => '?').join(',');
+        const query = `
+            SELECT comment_id 
+            FROM comments 
+            WHERE parent_comment_id IN (${placeholders})
+        `;
+        const [rows] = await db.query(query, newCommentIds);
+
+        // Nếu tìm thấy các comment con, thêm vào danh sách
+        newCommentIds = rows.map(row => row.comment_id);
+        allCommentIds.push(...newCommentIds);
+    }
+
+    return allCommentIds;
+};
+
 const deleteListCommentService = async (ids) => {
     if (!Array.isArray(ids) || ids.length === 0) {
         throw new Error('Danh sách ID không hợp lệ');
     }
 
+    // Lấy tất cả các comment con
+    const allCommentIds = await getAllChildComments(ids);
+
     // Tạo chuỗi placeholders cho câu truy vấn SQL
-    const placeholders = ids.map(() => '?').join(',');
+    const placeholders = allCommentIds.map(() => '?').join(',');
 
-    // Kiểm tra nếu comment có replies
-    const checkRepliesQuery = `SELECT comment_id, replies FROM comments WHERE comment_id IN (${placeholders})`;
-    const [rows] = await db.query(checkRepliesQuery, ids);
-
-    // Kiểm tra xem comment nào có replies
-    for (const row of rows) {
-        if (row.replies) {
-            const replies = JSON.parse(row.replies);
-            if (Object.keys(replies).length > 0) {
-                throw new Error(`Cannot delete comment with id ${row.comment_id} because it has replies`);
-            }
-        }
-    }
-
-    // Nếu không có replies, tiến hành xóa
+    // Xóa tất cả các comment và comment con
     const deleteQuery = `DELETE FROM comments WHERE comment_id IN (${placeholders})`;
-    const [result] = await db.query(deleteQuery, ids);
+    const [result] = await db.query(deleteQuery, allCommentIds);
     return result;
 };
 
