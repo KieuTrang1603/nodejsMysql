@@ -201,7 +201,6 @@ const convertVideoToHLS = (inputPath, outputDir, callback) => {
 
         command.on('close', (code) => {
             if (code === 0) {
-                console.log(`Chuyển đổi HLS cho ${resolutions[index].name} thành công`);
                 finished++;
                 if (finished === totalCommands) {
                     // Khi tất cả lệnh ffmpeg hoàn thành, tạo master playlist
@@ -227,7 +226,6 @@ const createMasterPlaylist = (outputDir, resolutions) => {
 
     const masterPlaylistPath = path.join(outputDir, 'master.m3u8');
     fs.writeFileSync(masterPlaylistPath, masterPlaylistContent);
-    console.log("Tạo master playlist thành công");
 };
 
 

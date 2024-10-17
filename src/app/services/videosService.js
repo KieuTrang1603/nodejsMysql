@@ -250,13 +250,14 @@ const deleteListVideoService = async (ids) => {
         // Tạo chuỗi placeholders cho câu truy vấn SQL
         const placeholders = ids.map(() => '?').join(',');
 
-        // Bước 1: Lấy tất cả comment_id của các comment cha liên quan đến video
-        const selectParentCommentsQuery = `SELECT comment_id FROM comments WHERE video_id IN (${placeholders})`;
+        // Bước 1: Lấy tất cả comment cha liên quan đến video
+        const selectParentCommentsQuery = `SELECT comment_id FROM comments WHERE video_id IN (${placeholders}) AND parent_comment_id IS NULL`;
         const [parentComments] = await connection.query(selectParentCommentsQuery, ids);
-
+        
         if (parentComments.length > 0) {
             // Tạo danh sách các comment cha
             const parentCommentIds = parentComments.map(comment => comment.comment_id);
+            console.log("parentCommentIds", parentCommentIds)
 
             // Xóa đệ quy các comment con từ mỗi comment cha
             for (const parentId of parentCommentIds) {
@@ -268,9 +269,36 @@ const deleteListVideoService = async (ids) => {
             await connection.query(deleteParentCommentsQuery, parentCommentIds);
         }
 
-        // Bước 2: Xóa video sau khi đã xóa hết comment liên quan
+        // Bước 2: Lấy user_id của các video sẽ bị xóa để cập nhật lại num_like
+        const selectUserQuery = `SELECT DISTINCT user_id FROM video WHERE video_id IN (${placeholders})`;
+        const [userResults] = await connection.query(selectUserQuery, ids);
+        const userIds = userResults.map(row => row.user_id);
+
+        // Bước 3: Xóa video sau khi đã xóa hết comment liên quan
         const deleteVideosQuery = `DELETE FROM video WHERE video_id IN (${placeholders})`;
         const [result] = await connection.query(deleteVideosQuery, ids);
+
+        if (result.affectedRows === 0) {
+            throw new Error('Không thể xóa video, kiểm tra lại danh sách ID');
+        }
+
+        // Bước 4: Cập nhật lại số lượng likes cho từng user sau khi xóa video
+        for (const userId of userIds) {
+            const totalLikesQuery = `
+                SELECT IFNULL(SUM(num_like), 0) AS totalLikes 
+                FROM video 
+                WHERE user_id = ?
+            `;
+            const [totalLikesResult] = await connection.query(totalLikesQuery, [userId]);
+            const totalLikes = totalLikesResult[0]?.totalLikes || 0;
+
+            const updateUserQuery = `
+                UPDATE user
+                SET num_like = ?
+                WHERE user_id = ?
+            `;
+            await connection.query(updateUserQuery, [totalLikes, userId]);
+        }
 
         await connection.commit(); // Commit transaction nếu mọi thứ ổn
         return result;

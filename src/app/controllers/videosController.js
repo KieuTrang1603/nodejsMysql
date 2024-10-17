@@ -104,18 +104,6 @@ const updateVideo = async (req, res, next) => {
         comments
     } = req.body;
 
-    // let dataUpdate = [
-    //     user_id,
-    //     content,
-    //     num_like || 0,
-    //     num_comments || 0,
-    //     link_video || null,
-    //     num_views || 0,
-    //     date_uploaded = new Date(),
-    //     likes || null,
-    //     comments || null,
-    //     video_id
-    // ];
     let dataUpdate = {};
 
     if (user_id) dataUpdate.user_id = user_id;

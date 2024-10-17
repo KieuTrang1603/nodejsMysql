@@ -230,7 +230,6 @@ const deleteComment = async (req, res, next) => {
 
 const deleteComments = async (req, res, next) => {
     const { ids } = req.query;
-    console.log(ids)
     const comment_ids = ids.split(',');
 
     try {
