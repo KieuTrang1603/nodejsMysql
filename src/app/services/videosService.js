@@ -11,7 +11,11 @@ const createVideoService = async (body) => {
 };
 
 const findByIdVideoService = async (id) => {
-    const query = `SELECT * FROM video WHERE video_id = ?`;
+    const query = `
+        SELECT video.*, user.username, user.avatar
+        FROM video 
+        JOIN user ON video.user_id = user.user_id
+        WHERE video_id = ?`;
     const [results] = await db.query(query, [id]);
     return results[0] || null;
 };
