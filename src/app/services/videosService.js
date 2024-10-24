@@ -61,11 +61,13 @@ const getVideoService = async (searchObject = {}) => {
 
     // Câu truy vấn chính
     const query = `
-        SELECT video.*, user.username, user.avatar
-        FROM video
-        JOIN user ON video.user_id = user.user_id
-        ${whereClause}
-        LIMIT ? OFFSET ?`;
+    SELECT video.*, user.username, user.avatar
+    FROM video
+    JOIN user ON video.user_id = user.user_id
+    ${whereClause}
+    ORDER BY video.created_at DESC 
+    LIMIT ? OFFSET ?`;
+
 
     // Câu truy vấn để đếm tổng số bản ghi
     const countQuery = `
