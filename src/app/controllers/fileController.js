@@ -8,7 +8,7 @@ const path = require("path");
 const { spawn } = require('child_process');
 const ffmpegPath = require('ffmpeg-static');
 
-let urlVideo, urlImage; 
+let urlVideo, urlImage;
 const storageVideo = multer.diskStorage({
     destination: (req, file, cb) => {
         if (file.mimetype.startsWith("video/")) {
@@ -35,7 +35,7 @@ const storageImage = multer.diskStorage({
     filename: (req, file, cb) => {
         const ext = path.extname(file.originalname);
         // urlImage = Date.now() + ext;
-        urlImage = uuidv4() + ext;
+        urlImage = uuidv4() + ".mp4";
         cb(null, urlImage)
     }
 })
@@ -237,7 +237,7 @@ const createSingleFileVideoHLS = async (req, res, next) => {
     }
 
     const videoPath = path.join(__dirname, "../../../public/assets/videos", file.filename);
-    const hlsOutputDir = path.join(__dirname, "../../../public/assets/hls", uuidv4());
+    const hlsOutputDir = path.join(__dirname, "../../../public/assets/hls", file?.filename?.split('.')?.[0] || uuidv4());
 
     fs.mkdirSync(hlsOutputDir, { recursive: true });
 
@@ -248,7 +248,7 @@ const createSingleFileVideoHLS = async (req, res, next) => {
 
         res.json({
             message: "Upload và chuyển đổi thành công",
-            data:`${path.basename(hlsOutputDir)}`,
+            data: `${path.basename(hlsOutputDir)}`,
             // playlistUrl: `/hls/${path.basename(hlsOutputDir)}/master.m3u8`,
             code: 200
         });
