@@ -19,7 +19,7 @@ const storageVideo = multer.diskStorage({
     },
     filename: (req, file, cb) => {
         const ext = path.extname(file.originalname);
-        urlVideo = uuidv4() + ext;
+        urlVideo = uuidv4() + ".mp4";
         cb(null, urlVideo)
     }
 });
@@ -34,8 +34,8 @@ const storageImage = multer.diskStorage({
     },
     filename: (req, file, cb) => {
         const ext = path.extname(file.originalname);
-        // urlImage = Date.now() + ext;
-        urlImage = uuidv4() + ".mp4";
+        urlImage = Date.now() + ext;
+        // urlImage = uuidv4() + ".mp4";
         cb(null, urlImage)
     }
 })
